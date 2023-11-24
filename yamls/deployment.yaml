@@ -17,7 +17,7 @@ spec:
         spec:
             containers:
                 - name: 'flowise'
-                  image: 'gcr.io/funzi-mobi-beta/flowise:dev-v13'
+                  image: 'gcr.io/funzi-next-production/flowise:prod-v14v3'
                   imagePullPolicy: 'Always'
                   resources:
                       requests:
