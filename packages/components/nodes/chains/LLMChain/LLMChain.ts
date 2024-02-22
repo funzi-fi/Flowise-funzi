@@ -1,13 +1,12 @@
-import { ICommonObject, INode, INodeData, INodeOutputsValue, INodeParams } from '../../../src/Interface'
-import { getBaseClasses, handleEscapeCharacters } from '../../../src/utils'
-import { LLMChain } from 'langchain/chains'
-import { BaseLanguageModel } from 'langchain/base_language'
-import { ConsoleCallbackHandler, CustomChainHandler, additionalCallbacks } from '../../../src/handler'
-import { BaseOutputParser } from 'langchain/schema/output_parser'
-import { formatResponse, injectOutputParser } from '../../outputparsers/OutputParserHelpers'
-import { BaseLLMOutputParser } from 'langchain/schema/output_parser'
+import { BaseLanguageModel, BaseLanguageModelCallOptions } from '@langchain/core/language_models/base'
+import { BaseLLMOutputParser, BaseOutputParser } from '@langchain/core/output_parsers'
 import { OutputFixingParser } from 'langchain/output_parsers'
+import { LLMChain } from 'langchain/chains'
+import { ICommonObject, INode, INodeData, INodeOutputsValue, INodeParams } from '../../../src/Interface'
+import { ConsoleCallbackHandler, CustomChainHandler, additionalCallbacks } from '../../../src/handler'
+import { getBaseClasses, handleEscapeCharacters } from '../../../src/utils'
 import { checkInputs, Moderation, streamResponse } from '../../moderation/Moderation'
+import { formatResponse, injectOutputParser } from '../../outputparsers/OutputParserHelpers'
 
 class LLMChain_Chains implements INode {
     label: string
@@ -27,7 +26,7 @@ class LLMChain_Chains implements INode {
         this.name = 'llmChain'
         this.version = 3.0
         this.type = 'LLMChain'
-        this.icon = 'chain.svg'
+        this.icon = 'LLM_Chain.svg'
         this.category = 'Chains'
         this.description = 'Chain to run queries against LLMs'
         this.baseClasses = [this.type, ...getBaseClasses(LLMChain)]
@@ -82,7 +81,7 @@ class LLMChain_Chains implements INode {
         const model = nodeData.inputs?.model as BaseLanguageModel
         const prompt = nodeData.inputs?.prompt
         const output = nodeData.outputs?.output as string
-        const promptValues = prompt.promptValues as ICommonObject
+        let promptValues: ICommonObject | undefined = nodeData.inputs?.prompt.promptValues as ICommonObject
         const llmOutputParser = nodeData.inputs?.outputParser as BaseOutputParser
         this.outputParser = llmOutputParser
         if (llmOutputParser) {
@@ -107,17 +106,24 @@ class LLMChain_Chains implements INode {
                 verbose: process.env.DEBUG === 'true'
             })
             const inputVariables = chain.prompt.inputVariables as string[] // ["product"]
+            promptValues = injectOutputParser(this.outputParser, chain, promptValues)
             const res = await runPrediction(inputVariables, chain, input, promptValues, options, nodeData)
             // eslint-disable-next-line no-console
             console.log('\x1b[92m\x1b[1m\n*****OUTPUT PREDICTION*****\n\x1b[0m\x1b[0m')
             // eslint-disable-next-line no-console
             console.log(res)
+
+            let finalRes = res
+            if (this.outputParser && typeof res === 'object' && Object.prototype.hasOwnProperty.call(res, 'json')) {
+                finalRes = (res as ICommonObject).json
+            }
+
             /**
              * Apply string transformation to convert special chars:
              * FROM: hello i am ben\n\n\thow are you?
              * TO: hello i am benFLOWISE_NEWLINEFLOWISE_NEWLINEFLOWISE_TABhow are you?
              */
-            return handleEscapeCharacters(res, false)
+            return handleEscapeCharacters(finalRes, false)
         }
     }
 
@@ -141,7 +147,7 @@ class LLMChain_Chains implements INode {
 
 const runPrediction = async (
     inputVariables: string[],
-    chain: LLMChain<string | object>,
+    chain: LLMChain<string | object | BaseLanguageModel<any, BaseLanguageModelCallOptions>>,
     input: string,
     promptValuesRaw: ICommonObject | undefined,
     options: ICommonObject,
@@ -164,7 +170,7 @@ const runPrediction = async (
     if (moderations && moderations.length > 0) {
         try {
             // Use the output of the moderation chain as input for the LLM chain
-            input = await checkInputs(moderations, chain.llm, input)
+            input = await checkInputs(moderations, input)
         } catch (e) {
             await new Promise((resolve) => setTimeout(resolve, 500))
             streamResponse(isStreaming, e.message, socketIO, socketIOClientId)

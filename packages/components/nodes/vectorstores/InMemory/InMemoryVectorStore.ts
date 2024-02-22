@@ -1,7 +1,7 @@
 import { flatten } from 'lodash'
 import { MemoryVectorStore } from 'langchain/vectorstores/memory'
-import { Embeddings } from 'langchain/embeddings/base'
-import { Document } from 'langchain/document'
+import { Embeddings } from '@langchain/core/embeddings'
+import { Document } from '@langchain/core/documents'
 import { INode, INodeData, INodeOutputsValue, INodeParams } from '../../../src/Interface'
 import { getBaseClasses } from '../../../src/utils'
 
@@ -31,7 +31,8 @@ class InMemoryVectorStore_VectorStores implements INode {
                 label: 'Document',
                 name: 'document',
                 type: 'Document',
-                list: true
+                list: true,
+                optional: true
             },
             {
                 label: 'Embeddings',
