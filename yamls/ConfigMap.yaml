@@ -5,8 +5,10 @@ metadata:
 data:
     DATABASE_TYPE: 'postgres'
     DATABASE_PORT: '5432'
-    DATABASE_HOST: '10.13.64.3'
-    DATABASE_NAME: 'flowise-production'
+    DATABASE_HOST: '10.98.16.3'
+    DATABASE_NAME: 'postgres'
     DATABASE_USER: 'postgres'
     DATABASE_PASSWORD: '%m5(J{x`rYy@60ht'
     DEBUG: 'true'
+    FLOWISE_USERNAME: team-tech
+    FLOWISE_PASSWORD: CTONDIALTHERAMETERSIGH
